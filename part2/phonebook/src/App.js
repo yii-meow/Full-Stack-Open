@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import PersonForm from "./components/PersonForm"
 import Filter from "./components/Filter"
 import Persons from "./components/Persons"
-import axios from "axios"
+import phonebooksService from './services/phonebooks'
 
 const App = () => {
   const [persons, setPersons] = useState([])
@@ -11,46 +11,88 @@ const App = () => {
   const [filteredName, setFilteredName] = useState([])
   const [isFilter, setIsFilter] = useState(false)
 
+  // Initializing the data of persons
   useEffect(() => {
-    axios
-      .get("http://localhost:3001/persons")
-      .then(response => {
-        console.log(response.data)
-        setPersons(response.data)
+    phonebooksService
+      .getAll()
+      .then(initialPerson => {
+        setPersons(initialPerson)
       })
   }, [])
 
-  // Filter name, case insensitive
+  // Filter name, with case insensitive
   const handleFilterNameChange = (event) => {
+    // If value is typed in filter bar, then only show eligible name
     if (event.target.value !== "") {
       setIsFilter(true)
     }
 
     let regex = new RegExp(event.target.value, "i")
 
+    // Only return people who match regex
     setFilteredName(persons.filter(person => regex.test(person.name)))
   }
 
-  // Submit Form
+  // Submit Form and add person
   const handleForm = (event) => {
     event.preventDefault()
 
     // If person name is duplicated
-    if (persons.filter(person => person.name === newName).length !== 0) {
-      alert(`${newName} is already added to phonebook`)
-    }
+    if (persons.find(p => p.name === newName)) {
 
+      // Asking for confirmation, and replace phone no of the person
+      if (window.confirm(
+        `${newName} is already added to phonebook, replace the old number with a new one?`
+      )) {
+        // Find the person
+        const personToUpdate = persons.find(p => p.name === newName)
+
+        // Modify the person's phone no
+        const modifiedPerson = { ...personToUpdate, number: newNumber }
+        
+        const personToUpdateId = personToUpdate.id
+
+        phonebooksService
+          .replacePhoneNo(personToUpdateId, modifiedPerson)
+          .then(returnedPerson => {
+            setPersons(persons.map(p => p.id !== personToUpdateId ? p : returnedPerson))
+          })
+          .catch(err => {
+            console.log(err);
+          })
+      }
+    }
     else {
       const newPerson = {
         "name": newName,
         'number': newNumber
       }
 
-      setPersons([...persons, newPerson])
+      phonebooksService
+        .addPerson(newPerson)
+        .then(returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+        })
     }
 
     setNewName("")
     setNewNumber("")
+  }
+
+  const deletePerson = (id) => {
+    const personName = persons.find(p => p.id === id).name
+
+    if (window.confirm("Delete " + personName + " ?")) {
+      phonebooksService
+        .deletePerson(id)
+        .then(deletedPerson => {
+          console.log(deletedPerson)
+          setPersons(persons.filter(p => p.id !== id))
+        })
+        .catch(err => {
+          console.log(err)
+        })
+    }
   }
 
   // Handle Name Input Change
@@ -75,7 +117,7 @@ const App = () => {
 
       <h3>Numbers</h3>
 
-      <Persons persons={persons} filteredName={filteredName} isFilter={isFilter} />
+      <Persons persons={persons} filteredName={filteredName} isFilter={isFilter} deletePerson={deletePerson} />
 
     </div>
   )
