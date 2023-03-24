@@ -3,6 +3,7 @@ import PersonForm from "./components/PersonForm"
 import Filter from "./components/Filter"
 import Persons from "./components/Persons"
 import phonebooksService from './services/phonebooks'
+import Notification from './components/Notification'
 
 const App = () => {
   const [persons, setPersons] = useState([])
@@ -10,6 +11,8 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
   const [filteredName, setFilteredName] = useState([])
   const [isFilter, setIsFilter] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [errorType, setErrorType] = useState("")
 
   // Initializing the data of persons
   useEffect(() => {
@@ -49,20 +52,24 @@ const App = () => {
 
         // Modify the person's phone no
         const modifiedPerson = { ...personToUpdate, number: newNumber }
-        
         const personToUpdateId = personToUpdate.id
 
         phonebooksService
           .replacePhoneNo(personToUpdateId, modifiedPerson)
           .then(returnedPerson => {
+            setErrorMessage(`Changed phone number to ${newNumber}`)
+            setErrorType("success")
             setPersons(persons.map(p => p.id !== personToUpdateId ? p : returnedPerson))
           })
+          // Error while updating phone no
           .catch(err => {
-            console.log(err);
+            setErrorType("fail")
+            setErrorMessage(`Information of ${personToUpdate.name} has already been removed from server`)
           })
       }
     }
     else {
+      // Add new person
       const newPerson = {
         "name": newName,
         'number': newNumber
@@ -71,14 +78,22 @@ const App = () => {
       phonebooksService
         .addPerson(newPerson)
         .then(returnedPerson => {
+          setErrorMessage(`Added ${newPerson.name}`)
+          setErrorType("success")
           setPersons(persons.concat(returnedPerson))
         })
     }
+
+    // Clear the message after 5 seconds
+    setTimeout(() => {
+      setErrorMessage("")
+    }, 5000);
 
     setNewName("")
     setNewNumber("")
   }
 
+  // Delete Person based on id
   const deletePerson = (id) => {
     const personName = persons.find(p => p.id === id).name
 
@@ -86,7 +101,6 @@ const App = () => {
       phonebooksService
         .deletePerson(id)
         .then(deletedPerson => {
-          console.log(deletedPerson)
           setPersons(persons.filter(p => p.id !== id))
         })
         .catch(err => {
@@ -110,6 +124,9 @@ const App = () => {
 
       <h2>Phonebook</h2>
 
+      {/* Display Alert Message */}
+      {errorMessage && <Notification message={errorMessage} errorType={errorType} />}
+      
       <Filter handleFilterNameChange={handleFilterNameChange} />
 
       <PersonForm handleForm={handleForm} newName={newName} newNumber={newNumber}
