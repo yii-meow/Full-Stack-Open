@@ -101,12 +101,18 @@ const App = () => {
       phonebooksService
         .deletePerson(id)
         .then(deletedPerson => {
+          setErrorMessage(`Deleted ${personName}`)
+          setErrorType("success")
           setPersons(persons.filter(p => p.id !== id))
         })
         .catch(err => {
           console.log(err)
         })
     }
+    // Clear the message after 5 seconds
+    setTimeout(() => {
+      setErrorMessage("")
+    }, 5000);
   }
 
   // Handle Name Input Change
@@ -126,7 +132,7 @@ const App = () => {
 
       {/* Display Alert Message */}
       {errorMessage && <Notification message={errorMessage} errorType={errorType} />}
-      
+
       <Filter handleFilterNameChange={handleFilterNameChange} />
 
       <PersonForm handleForm={handleForm} newName={newName} newNumber={newNumber}
